@@ -1,0 +1,97 @@
+#### TCP Clients
+Get a tcp server running on port 3000
+Run this with a nickname as the argument
+If you use pipes you don't have to manage excluding user form seeing echo
+
+``` JavaScript
+'use strict';
+const net = require('net');
+
+let chomp = function(string) {
+  while(string[string.length - 1] === '\n' || string[string.length - 1] === '\r')
+    string = string.slice(0, string.length - 1);
+  return string;
+};
+
+const client = net.connect({port: 3000});
+let name = process.argv[2];
+process.stdin.on('data', function(data) {
+  if (data.toString().indexOf('/nick') === 0)
+    name = chomp((data.toString().split(' '))[1]);
+  else
+    client.write(name + ': ' + data.toString());
+  process.stdout.write(name + '>');
+});
+process.stdout.write(name + '>');
+
+client.pipe(process.stdout);
+client.on('data', function() {
+  process.stdout.write(name + '>');
+});
+```
+
+
+####  TCP testing
+Good idea not to start server in server module
+Make server module _server.js and make this server.js
+``` JavaScript
+require('./_server.js').listen(3000, () => {
+  console.log('server up');
+});
+```
+Then you use a different port for testing
+``` JavaScript
+
+test.js in /test
+``` JavaScript
+'use strict';
+const net = require('net');
+const expect = require('chai').expect;
+
+const server = require('../_server');
+const port = 5000;
+
+describe('chat server', function() {
+  before(function(done) {
+    server.listen(port, done);
+  });
+
+  after(function(done) {
+    server.close(done);
+  });
+
+  it('should send some data between clients', function(done) {
+    let client1 = net.connect({port});
+    let client2 = net.connect({port});
+    var messages = ['test message', 'hello from the server\n'];
+    var toSend = ['test message'];
+
+    client2.on('data', function(data) {
+      expect(data.toString()).to.eql(messages.pop());
+      if (toSend.length)
+        client1.write(toSend.pop());
+      else
+        client1.end();
+    });
+
+    client1.on('close', function() {
+      client2.end();
+      expect(messages.length).to.eql(0);
+      done();
+    });
+  });
+});
+```
+What is the flow here?
+Both clients connect
+Client2 gets the 'hello ...' from the server
+Client2 listens for 'data' and expects
+If there's data to send Client1 sends it otherwise Client1 calls end (which triggers close event)
+Client1 detects 'close' and the Client2 calls end
+expect that all messages have been processed
+
+#### TCP over HTTP
+Run TCP server
+curl localhost:3000 and note hang because no response
+
+look at httpie install with bower

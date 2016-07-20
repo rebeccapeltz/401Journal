@@ -1,0 +1,95 @@
+####  Streams
+
+``` JavaScript
+'use strict';
+const fs = require('fs');
+var piper = module.exports = exports = () => {
+  var readFileName = process.argv.length > 2 ? process.argv[2] : __dirname + '/public/index1.html';
+  var writeFileName = process.argv.length > 3 ? process.argv[3] : __dirname + '/public/copy.html';
+  var reader = fs.createReadStream(readFileName);
+
+  reader.on('open', () => {
+    var writer = fs.createWriteStream(__dirname + writeFileName);
+    reader.pipe(writer);
+    reader.pipe(process.stdout);
+  });
+  reader.on('error', (err) => {
+    console.log('error', err);
+  });
+
+};
+piper();
+```
+
+
+#### net and tcp chat server
+https://github.com/codefellows/code-401-javascript-guide/tree/master/week-02/lab-06-chat
+
+Assignment for chat server with id, nickname, client pool
+
+``` JavaScript
+'use strict';
+
+const net = require('net');
+
+let clients = [];
+
+let server = net.createServer(function(socket) {
+  clients.forEach(function(client) {
+    socket.pipe(client);
+    client.pipe(socket);
+  });
+  clients.push(socket);
+
+  console.log('connected');
+  socket.write('hello from the server\n');
+  socket.pipe(process.stdout);
+  socket.on('data', function(data) {
+    if (data.toString() === 'END\r\n')
+      socket.end();
+  });
+
+  socket.on('end', function() {
+    console.log('disconnected');
+    clients.splice(clients.indexOf(socket), 1);
+  });
+});
+
+server.listen(3000, function() {
+  console.log('server up');
+});
+```
+Server with "classic" data/end handler
+```
+'use strict';
+
+const net = require('net');
+
+let clients = [];
+
+let server = net.createServer(function(socket) {
+  clients.push(socket);
+
+  console.log('connected');
+  socket.write('hello from the server\n');
+  socket.pipe(process.stdout);
+  socket.on('data', function(data) {
+    clients.forEach(function(client) {
+      if (client !== socket)
+        client.write(data.toString());
+    });
+
+    if (data.toString() === 'END\r\n')
+      socket.end();
+  });
+
+  socket.on('end', function() {
+    console.log('disconnected');
+    clients.splice(clients.indexOf(socket), 1);
+  });
+});
+
+server.listen(3000, function() {
+  console.log('server up');
+});
+```
