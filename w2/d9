@@ -96,7 +96,7 @@ http.createServer(routes.route()).listen(3000, () => console.log('server up'));
 
 #### var and let: variable scoping
 
-var is known across funciton
+var is known across function
 What is logged? process.nextTick puts function on the next round of event loop 10 10's
 
 ``` JavaScript
