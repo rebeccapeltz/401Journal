@@ -1,0 +1,152 @@
+#### More promises
+Looking at async file read
+
+``` JavaScript
+'use strict';
+const fs = require('fs');
+
+module.exports = exports = function(fileName) {
+  let promise = new Promise((resolve, reject) => {
+    console.log('promise created');
+    fs.readFile(fileName, (err, data) => {
+      if (err) return reject(err);
+      console.log('about to resolve');
+      resolve(data);
+    });
+  });
+  promise.catch((err) => {
+    console.log(err);
+    console.log(err.stack);
+    throw err;
+  });
+  promise.then((data) => {
+    console.log(data.toString());
+    return data;
+  });
+  return promise;
+};
+```
+Using the promise
+``` JavaScript
+'use strict';
+
+const fsPromise = require('./lib/fs_promise');
+let fileNames = process.argv.slice(2);  //get file names from arguments
+let files = fileNames.map((file) => fsPromise(file));  //convert to array by calling fsPromise
+files.map((promise) => promise.catch(() => process.exit(1))); //return an array of data
+```
+
+
+
+#### Router
+
+Complex object - first order functions
+``` JavaScript
+'use strict';
+
+let methods = ['get', 'post', 'put', 'patch', 'delete'];
+let Router = module.exports = exports = function(baseUrl) {
+  this.baseUrl = baseUrl;
+  this.routes = {};
+  methods.forEach((method) => {
+    this.routes[method.toUpperCase()] = {};
+  });
+};
+
+methods.forEach((method) => {
+  Router.prototype[method] = function(route, cb) {
+    this.routes[method.toUpperCase()][this.baseUrl + route] = cb;
+  };
+});
+
+Router.prototype.route = function() {
+  return (req, res) => {
+    if (typeof this.routes[req.method][req.url] === 'function') {
+      this.routes[req.method][req.url](req, res);
+    } else {
+      res.writeHead(404, {
+        'Content-Type': 'text/plain'
+      });
+      res.write('that page does not exist');
+      res.end();
+    }
+  };
+};
+```
+The server - compare the passing of a function by name to the original anon function
+ ``` JavaScript
+ 'use strict';
+
+const http = require('http');
+const Router = require('./lib/router');
+
+let routes = new Router('/api');
+
+routes.get('/hello', (req, res) => {
+  res.writeHead(200, {
+    'Content-Type': 'application/json'
+  });
+  res.write('{"msg": "hello world"}');
+  res.end();
+});
+
+http.createServer(routes.route()).listen(3000, () => console.log('server up'));
+```
+
+
+#### var and let: variable scoping
+
+var is known across funciton
+What is logged? process.nextTick puts function on the next round of event loop 10 10's
+
+``` JavaScript
+for(var i = 0; i < 10; i++)
+  process.nextTick(() => console.log(i));
+
+console.log('after: ' + i);
+
+```
+
+0-9
+let is know within braces lexical scope
+code block
+
+``` JavaScript
+
+'use strict';
+
+for(let i = 0; i < 10; i++) {
+  process.nextTick(() => console.log(i));
+}
+```
+
+``` JavaScript
+use strict';
+var i = 'outside';
+
+if (true) {
+  var j = 1;
+}
+console.log(j);
+
+if (true) {
+  let i = 0;
+  console.log('inside: ' + i);
+}
+
+console.log(i);
+```
+
+``` JavaScript
+'use strict';
+
+var first = 'first';
+(function() {
+  var first = 'second';
+  for(let x = 0; x < 10; x++)
+    for(let x = 10; x < 20; x++)
+      console.log(x);
+  console.log('inside: ' + first);
+})();
+console.log('outside: ' + first);
+```
